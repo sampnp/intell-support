@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     # --- Embeddings ---
     embedding_model: str = "BAAI/bge-small-en-v1.5"
 
+    # --- Auth ---
+    # Required: the app refuses to start rather than sign tokens with a known default key.
+    jwt_secret: str
+    jwt_expire_minutes: int = 480
+    jwt_algorithm: str = "HS256"
+
     # --- App ---
     log_level: str = "INFO"
     # Comma-separated list, e.g. "http://localhost:5173,http://127.0.0.1:5173"

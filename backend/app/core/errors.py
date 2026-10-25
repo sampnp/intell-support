@@ -22,6 +22,8 @@ class AppError(Exception):
     status_code: int = 500
     code: str = "APP_ERROR"
     message: str = "Application error"
+    # Extra response headers, e.g. WWW-Authenticate on 401s.
+    headers: dict[str, str] | None = None
 
     def __init__(
         self, message: str | None = None, *, code: str | None = None, details: Any = None
@@ -30,6 +32,13 @@ class AppError(Exception):
         self.code = code or self.code
         self.details = details
         super().__init__(self.message)
+
+
+class UnauthorizedError(AppError):
+    status_code = 401
+    code = "UNAUTHORIZED"
+    message = "Not authenticated"
+    headers = {"WWW-Authenticate": "Bearer"}
 
 
 class NotFoundError(AppError):
@@ -81,7 +90,7 @@ def error_response(
 
 async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
     logger.info("app_error code=%s status=%s path=%s", exc.code, exc.status_code, request.url.path)
-    return error_response(exc.status_code, exc.code, exc.message, exc.details)
+    return error_response(exc.status_code, exc.code, exc.message, exc.details, headers=exc.headers)
 
 
 async def handle_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
