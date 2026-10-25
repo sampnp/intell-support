@@ -103,6 +103,12 @@ Screenshots live in `docs/screenshots/codezero/`.
   `services/tickets.py`, 7 endpoints, `make_ticket` fixture, 65 new tests. WP4/WP6 hook points
   are marked in the service.
 - Issues found: none failed on the first run, which is why the mutation check matters here.
+  Before pushing, CodeZero noticed an unpushed commit it hadn't made: the extension had
+  auto-committed WP2's leftover task checkbox when the WP3 plan ran, with a
+  `Co-authored-by: Code-Zero` trailer (against CLAUDE.md). It held the push; a small follow-up
+  plan re-applied that change without the trailer, cherry-picked WP3 on top (diff against the
+  tested merge: empty) and pushed. From WP4 on, the leftover checkbox is committed by hand at the
+  end of each WP so the next Run has nothing to auto-commit.
 - Verification: 116 tests pass in Docker (51 earlier + 65 new). Mutation check: users see all
   tickets in the list, internal notes returned to users, users allowed to post internal notes →
   1 test failed each; all reverted.
