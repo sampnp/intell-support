@@ -1,0 +1,41 @@
+Acme Cloud - Account and Login Troubleshooting
+
+This guide covers the most common problems people have signing in to Acme Cloud on the web, the desktop app and the mobile apps: forgotten passwords, two-factor authentication, locked accounts and single sign-on (SSO).
+
+1. Resetting a forgotten password
+
+If you cannot remember your password, open the Acme Cloud sign-in page and choose "Forgot password". Enter the email address you registered with. We send a reset link that is valid for 60 minutes and can be used only once.
+
+If the reset email does not arrive within a few minutes, check your spam or junk folder and make sure the message was not filtered by your company mail server. Requesting a new link invalidates any earlier links, so always use the most recent email.
+
+Your new password must be at least 10 characters long and must not match any of your last five passwords. After a successful reset you are signed out of every device and must sign in again on each one. The desktop app will pause syncing until you sign in again; no files are lost.
+
+2. Two-factor authentication (2FA)
+
+Two-factor authentication adds a second step to sign-in. Acme Cloud supports authenticator apps (time-based one-time codes) and hardware security keys. SMS codes are no longer offered for new enrolments.
+
+If your authenticator app shows codes that are rejected, the clock on your phone is probably out of sync. Turn on automatic date and time in your phone settings and try the newest code. Codes change every 30 seconds.
+
+When you turned on 2FA we showed you ten recovery codes. Each recovery code works once and can be used instead of an authenticator code. If you lost your phone, sign in with a recovery code and then go to Settings > Security to set up 2FA on your new device.
+
+If you have lost both your phone and your recovery codes, contact support from the email address on the account. For your security, identity verification for 2FA removal takes up to two business days.
+
+3. Locked accounts
+
+After ten failed sign-in attempts in a row, the account is locked for 30 minutes to protect it from password guessing. The lock lifts automatically; resetting your password also unlocks the account immediately.
+
+If you receive a "suspicious sign-in" email and you did not try to sign in, reset your password straight away and review the active sessions list in Settings > Security, where you can sign out any device you do not recognise.
+
+Accounts can also be suspended by a workspace administrator. A suspended user sees the message "Your account has been disabled by your administrator". Only the administrator of your workspace can restore access; Acme Cloud support cannot override an administrator's decision.
+
+4. Single sign-on (SSO)
+
+Business and Enterprise workspaces can require sign-in through an identity provider such as Okta, Azure AD (Microsoft Entra ID) or Google Workspace using SAML 2.0. When SSO is enforced, users sign in with the "Continue with SSO" button and cannot use an Acme Cloud password.
+
+The error "User not assigned to this application" comes from your identity provider, not from Acme Cloud. Ask your IT team to assign the Acme Cloud app to your account in the identity provider.
+
+If SSO sign-in loops back to the sign-in page, clear the browser cookies for acmecloud.example and try again in a private window. Administrators should also confirm that the SAML certificate configured in Acme Cloud has not expired; an expired certificate stops every SSO sign-in for the workspace.
+
+5. Changing the email address on your account
+
+You can change your sign-in email in Settings > Profile. We send a confirmation link to the new address, and the change only takes effect after you click it. On SSO workspaces the email address is managed by the identity provider and cannot be changed in Acme Cloud.

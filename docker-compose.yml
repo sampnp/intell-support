@@ -35,6 +35,7 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       QDRANT_URL: http://qdrant:6333
+      SAMPLE_KB_DIR: /sample_kb
       # File events don't cross Windows/OneDrive bind mounts; poll for --reload.
       WATCHFILES_FORCE_POLLING: "true"
     command: >
@@ -44,6 +45,8 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend:/app
+      # Sample KB for tests, the seed script and scripts/build_sample_kb.py (writes PDFs here).
+      - ./sample_kb:/sample_kb
     depends_on:
       postgres:
         condition: service_healthy

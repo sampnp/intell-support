@@ -13,7 +13,13 @@ PyJWT==2.10.1
 bcrypt==4.2.1
 # Required by pydantic's EmailStr
 email-validator==2.2.0
+# Knowledge base ingestion (python-multipart: FastAPI UploadFile / Form)
+pypdf==5.1.0
+python-multipart==0.0.20
 
 # Tests (run inside the same image)
 pytest==8.3.4
 httpx==0.28.1
+
+# Tools: scripts/build_sample_kb.py generates the sample PDFs
+fpdf2==2.8.1

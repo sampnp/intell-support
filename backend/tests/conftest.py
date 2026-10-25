@@ -1,6 +1,7 @@
 """Shared fixtures. DB tests run against the `support_test` database, inside a transaction that
 is rolled back after each test. Qdrant is replaced by the in-memory client."""
 
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,7 @@ from app.models.ticket import Ticket
 from app.models.user import Role, User
 from app.schemas.tickets import TicketCreate
 from app.services import tickets as ticket_service
+from app.services.ingestion import get_session_factory
 from app.services.vector_store import get_qdrant_client
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -79,8 +81,15 @@ def qdrant_client():
 @pytest.fixture
 def app(db_session, qdrant_client):
     application = create_app()
+
+    @contextmanager
+    def test_session():
+        # Background work (ingestion) uses the test session too, and must not close it.
+        yield db_session
+
     application.dependency_overrides[get_db] = lambda: db_session
     application.dependency_overrides[get_qdrant_client] = lambda: qdrant_client
+    application.dependency_overrides[get_session_factory] = lambda: test_session
     return application
 
 
@@ -162,3 +171,33 @@ def auth_headers():
         return {"Authorization": f"Bearer {create_access_token(for_user.id)}"}
 
     return _auth_headers
+
+
+@pytest.fixture(scope="session")
+def sample_kb() -> Path:
+    """The Acme Cloud sample KB, mounted into the container by docker-compose.yml."""
+    path = Path(get_settings().sample_kb_dir)
+    if not (path / "malformed").is_dir():
+        pytest.fail(f"Sample KB not found at {path}; is ./sample_kb mounted (docker-compose.yml)?")
+    return path
+
+
+@pytest.fixture
+def upload(client, auth_headers):
+    """POST a file to /api/kb/documents. `source` is a Path or a (filename, bytes) pair.
+
+    Background processing has finished by the time this returns (TestClient runs it)."""
+
+    def _upload(as_user: User, source, *, title: str | None = None):
+        if isinstance(source, Path):
+            filename, data = source.name, source.read_bytes()
+        else:
+            filename, data = source
+        return client.post(
+            "/api/kb/documents",
+            files={"file": (filename, data)},
+            data={"title": title} if title is not None else None,
+            headers=auth_headers(as_user),
+        )
+
+    return _upload
