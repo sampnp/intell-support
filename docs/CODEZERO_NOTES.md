@@ -87,6 +87,29 @@ Screenshots live in `docs/screenshots/codezero/`.
 - Time taken:
 
 
+### WP3 — Tickets core   (2026-10-26)
+- Mode: Planned → Run phase (4 tasks)
+- Prompt: "no no continue with w3 only" (after asking whether WP3–WP8 could be done in one go;
+  CodeZero recommended one plan per WP so each stays reviewable and gets its own log entry)
+- Plan summary: tickets / ticket_comments / ticket_events models + migration 0002; create, list
+  (filters, full-text search, pagination), detail, edit; comments with internal notes; events;
+  all access rules in `core/permissions.py`.
+- Decisions asked by CodeZero: comments on closed tickets → refused with 409 (closed is terminal);
+  priority → chosen by the user at creation, default medium. Defaults it stated and I accepted:
+  most-recently-updated ordering (rank first when searching), `{items, total, page, page_size}`,
+  agents get 403 on edit, comments bump `updated_at`, events append-only enforced by a DB trigger.
+- What was generated: models with a generated `search_vector` column (title weighted above
+  description, GIN index), migration 0002 with the append-only trigger, `core/permissions.py`,
+  `services/tickets.py`, 7 endpoints, `make_ticket` fixture, 65 new tests. WP4/WP6 hook points
+  are marked in the service.
+- Issues found: none failed on the first run, which is why the mutation check matters here.
+- Verification: 116 tests pass in Docker (51 earlier + 65 new). Mutation check: users see all
+  tickets in the list, internal notes returned to users, users allowed to post internal notes →
+  1 test failed each; all reverted.
+- Screenshots:
+- Time taken:
+
+
 ---
 
 ## Summary (written at the end)
