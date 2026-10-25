@@ -9,6 +9,7 @@ TICKET_ENDPOINTS = [
     ("GET", "/api/tickets/{id}/comments", None),
     ("POST", "/api/tickets/{id}/comments", {"body": "Hello from someone else"}),
     ("GET", "/api/tickets/{id}/events", None),
+    ("POST", "/api/tickets/{id}/status", {"status": "resolved"}),
 ]
 
 ALL_ENDPOINTS = [
@@ -19,6 +20,7 @@ ALL_ENDPOINTS = [
         {"title": "No token", "description": "Should never be created.", "category": "other"},
     ),
     *TICKET_ENDPOINTS,
+    ("POST", "/api/tickets/{id}/assign", {"agent_id": None}),
 ]
 
 ENDPOINT_IDS = [f"{method} {path}" for method, path, _ in TICKET_ENDPOINTS]
