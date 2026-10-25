@@ -1,5 +1,5 @@
-# Infrastructure services. The backend and frontend services are added in
-# docs/PLAN.md work packages WP1 (backend) and WP8 (frontend).
+# Infrastructure services plus the backend (WP1). The frontend service is added in
+# docs/PLAN.md work package WP8.
 services:
   postgres:
     image: postgres:16-alpine
@@ -25,6 +25,30 @@ services:
       - "${QDRANT_PORT:-6333}:6333"
     volumes:
       - qdrant_storage:/qdrant/storage
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      # Container-network addresses. These override .env, where POSTGRES_PORT / QDRANT_PORT
+      # are the ports published on the host.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      QDRANT_URL: http://qdrant:6333
+      # File events don't cross Windows/OneDrive bind mounts; poll for --reload.
+      WATCHFILES_FORCE_POLLING: "true"
+    command: >
+      sh -c "alembic upgrade head &&
+             exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log --reload"
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
 
 volumes:
   pgdata:

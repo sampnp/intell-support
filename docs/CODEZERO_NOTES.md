@@ -47,6 +47,23 @@ Screenshots live in `docs/screenshots/codezero/`.
   (postgres + qdrant), test-database init script, `docs/PLAN.md`, this log, README stub.
 - Next: connect GitHub in CodeZero, index the repo, start WP1 in Planned mode.
 
+
+### WP1 — Backend foundation   (2026-10-26)
+- Mode: Planned → Run phase (5 tasks)
+- Setup challenge: CodeZero could not launch Claude on Windows ("Native CLI binary for win32-x64
+  not found"). Found the cause in the CodeZero output log; set code0.providerPaths.claude to the
+  native claude.exe (the npm .cmd wrapper can't be spawned by the SDK).
+- Decision asked by CodeZero: embedder status in /api/health before WP6 exists → chose placeholder
+  "not_configured" to keep WP1 scoped and builds fast. (CodeZero caught this gap in my spec.)
+- Departures from the plan (accepted): log-record factory instead of filter (so pytest caplog sees
+  request ids); uvicorn access log off (middleware logs requests); CORS credentials off (bearer auth);
+  extra 405 test.
+- Verification: compose up, /api/health returns ok, 20 tests pass in Docker. Mutation check: made
+  the 500 handler leak the message, made health ignore Qdrant errors, accepted invalid request ids;
+  1, 2 and 3 tests failed respectively, so the suite catches real defects.
+- Follow-up for WP6: use a shared Qdrant client instead of one per request.
+
+
 ---
 
 ## Summary (written at the end)
