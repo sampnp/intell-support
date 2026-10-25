@@ -16,7 +16,10 @@ from app.core import security
 from app.core.security import create_access_token, hash_password
 from app.db import get_db, make_engine
 from app.main import create_app
+from app.models.ticket import Ticket
 from app.models.user import Role, User
+from app.schemas.tickets import TicketCreate
+from app.services import tickets as ticket_service
 from app.services.vector_store import get_qdrant_client
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -122,6 +125,33 @@ def user(make_user):
 @pytest.fixture
 def agent(make_user):
     return make_user(role=Role.agent, full_name="Support Agent")
+
+
+@pytest.fixture
+def make_ticket(db_session):
+    """Factory: create a ticket through the service (so it has its `created` event).
+
+    Extra keyword fields (e.g. status, assigned_to) are set directly afterwards."""
+
+    def _make_ticket(
+        owner: User,
+        *,
+        title: str = "Cannot sync my files",
+        description: str = "The desktop app has been stuck on 'syncing' since this morning.",
+        category: str = "sync",
+        priority: str = "medium",
+        **fields,
+    ) -> Ticket:
+        data = TicketCreate(
+            title=title, description=description, category=category, priority=priority
+        )
+        ticket = ticket_service.create_ticket(db_session, owner, data)
+        for name, value in fields.items():
+            setattr(ticket, name, value)
+        db_session.flush()
+        return ticket
+
+    return _make_ticket
 
 
 @pytest.fixture
