@@ -12,11 +12,23 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.core import security
+from app.core.security import create_access_token, hash_password
 from app.db import get_db, make_engine
 from app.main import create_app
+from app.models.user import Role, User
 from app.services.vector_store import get_qdrant_client
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+# Every user created by `make_user` has this password.
+DEFAULT_PASSWORD = "correct-horse-battery"
+
+
+@pytest.fixture(autouse=True)
+def fast_bcrypt(monkeypatch):
+    # The production work factor (12) would make the suite slow.
+    monkeypatch.setattr(security, "BCRYPT_ROUNDS", 4)
 
 
 @pytest.fixture(scope="session")
@@ -73,3 +85,50 @@ def app(db_session, qdrant_client):
 def client(app):
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def make_user(db_session):
+    """Factory: insert a user (role `user` by default) with DEFAULT_PASSWORD."""
+    counter = 0
+
+    def _make_user(
+        *,
+        role: Role = Role.user,
+        email: str | None = None,
+        full_name: str = "Test User",
+        password: str = DEFAULT_PASSWORD,
+    ) -> User:
+        nonlocal counter
+        counter += 1
+        user = User(
+            email=email or f"{role}{counter}@example.com",
+            full_name=full_name,
+            password_hash=hash_password(password),
+            role=role,
+        )
+        db_session.add(user)
+        db_session.flush()
+        return user
+
+    return _make_user
+
+
+@pytest.fixture
+def user(make_user):
+    return make_user(role=Role.user, full_name="Regular User")
+
+
+@pytest.fixture
+def agent(make_user):
+    return make_user(role=Role.agent, full_name="Support Agent")
+
+
+@pytest.fixture
+def auth_headers():
+    """Return the Authorization header for a user."""
+
+    def _auth_headers(for_user: User) -> dict[str, str]:
+        return {"Authorization": f"Bearer {create_access_token(for_user.id)}"}
+
+    return _auth_headers

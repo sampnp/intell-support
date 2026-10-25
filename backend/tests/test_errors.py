@@ -2,7 +2,13 @@ import pytest
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.core.errors import ConflictError, ForbiddenError, NotFoundError, ValidationFailedError
+from app.core.errors import (
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+    UnauthorizedError,
+    ValidationFailedError,
+)
 
 
 class Item(BaseModel):
@@ -42,6 +48,10 @@ def app(app):
     @router.get("/unauthorized")
     def unauthorized():
         raise HTTPException(401, "Not authenticated", headers={"WWW-Authenticate": "Bearer"})
+
+    @router.get("/app-unauthorized")
+    def app_unauthorized():
+        raise UnauthorizedError("Invalid or expired token", code="INVALID_TOKEN")
 
     @router.get("/crash")
     def crash():
@@ -118,6 +128,16 @@ def test_http_exception_keeps_headers(client):
     assert response.headers["WWW-Authenticate"] == "Bearer"
     assert response.json() == {
         "error": {"code": "UNAUTHORIZED", "message": "Not authenticated", "details": None}
+    }
+
+
+def test_unauthorized_app_error_sets_www_authenticate(client):
+    response = client.get("/test-errors/app-unauthorized")
+
+    assert response.status_code == 401
+    assert response.headers["WWW-Authenticate"] == "Bearer"
+    assert response.json() == {
+        "error": {"code": "INVALID_TOKEN", "message": "Invalid or expired token", "details": None}
     }
 
 

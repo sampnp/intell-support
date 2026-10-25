@@ -64,6 +64,29 @@ Screenshots live in `docs/screenshots/codezero/`.
 - Follow-up for WP6: use a shared Qdrant client instead of one per request.
 
 
+### WP2 — Users + auth   (2026-10-26)
+- Mode: Planned → Run phase (5 tasks)
+- Prompt: "okay so we have finished w1 lets continue with w2"
+- Plan summary: users table + migration 0001, register/login/me under /api/auth, bcrypt hashing,
+  JWT (sub/iat/exp only, role read from DB each request), `get_current_user` / `require_agent`,
+  shared test fixtures (`make_user`, `user`, `agent`, `auth_headers`) for later WPs.
+- Decisions asked by CodeZero: register response → token + user (same as login, so the frontend
+  has one code path); login body → JSON `{email, password}` rather than the OAuth2 form.
+  It also flagged choices I hadn't specified: bcrypt's 72-byte limit (now a clean 422 instead of a
+  500), FastAPI's HTTPBearer answering a missing token with 403 instead of 401, passlib being
+  unmaintained, and email-validator rejecting `.test`/`.local` addresses (matters for WP7 seeds).
+- What was generated: `core/security.py`, `core/deps.py`, `models/user.py`, migration 0001,
+  `schemas/auth.py`, `services/auth.py`, `api/auth.py`, `UnauthorizedError` (with
+  `WWW-Authenticate: Bearer`), 31 new tests.
+- Departure from the plan: HTTPBearer returns nothing for a `Basic` header, so `get_current_user`
+  checks the raw Authorization header to answer `INVALID_TOKEN` instead of `NOT_AUTHENTICATED`.
+- Verification: 51 tests pass in Docker (20 WP1 + 31 new). Mutation check: let users through
+  `require_agent`, disabled expiry checking, let register honour `role` from the body → 1, 2 and
+  1 tests failed respectively; all reverted.
+- Screenshots:
+- Time taken:
+
+
 ---
 
 ## Summary (written at the end)
