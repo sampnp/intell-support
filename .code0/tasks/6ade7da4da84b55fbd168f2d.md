@@ -5,7 +5,7 @@ Repositories: sampnp/intell-support
 
 ## Tasks
 
-- [ ] Add definition of done to CLAUDE.md and PLAN.md §13, commit and push
+- [x] Add definition of done to CLAUDE.md and PLAN.md §13, commit and push
 
 ---
 
