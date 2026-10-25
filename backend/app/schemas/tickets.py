@@ -61,6 +61,17 @@ class TicketSummary(BaseModel):
 
 class TicketOut(TicketSummary):
     description: str
+    # Status moves the current user may make (docs/PLAN.md §6); filled in by the router.
+    allowed_transitions: list[TicketStatus] = []
+
+
+class StatusChange(BaseModel):
+    status: TicketStatus
+
+
+class AssignRequest(BaseModel):
+    # Required key; null unassigns.
+    agent_id: int | None
 
 
 class TicketPage(BaseModel):

@@ -331,7 +331,7 @@ Each WP is one CodeZero planned session → reviewed plan → tasks → tests gr
 | WP9 | Ticket pages: list (filters/search), create (live suggestions), detail (thread, timeline, controls, suggestions panel) | full ticket flow works in browser |
 | WP10 | Agent dashboard + KB page (upload, table, search panel) | flows work in browser |
 | WP11 | Playwright e2e (3 specs) | e2e green |
-| WP12 | Docs: README, ARCHITECTURE.md, API.md, screenshots/video, final CodeZero note | submission ready |
+| WP12 | Docs: README, ARCHITECTURE.md, API.md, final CodeZero note |
 
 ### Definition of done for every work package
 

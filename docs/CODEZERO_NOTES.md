@@ -17,24 +17,6 @@ build this project: planning, implementation, debugging, test generation and ver
 6. **Debug:** failures are investigated with CodeZero Chat / Flow Trace.
 7. **Commit:** reviewed changes are committed with a summary from the Git Tree.
 
-Screenshots live in `docs/screenshots/codezero/`.
-
----
-
-## Entry template
-
-```
-### WPn — <title>   (YYYY-MM-DD)
-- Mode:
-- Prompt:
-- Plan summary:
-- Changes I made to the plan before approving (and why):
-- What was generated:
-- Issues found in review / tests (and how they were fixed):
-- Verification (tests run, mutation check, manual check):
-- Screenshots:
-- Time taken:
-```
 
 ---
 
@@ -112,6 +94,29 @@ Screenshots live in `docs/screenshots/codezero/`.
 - Verification: 116 tests pass in Docker (51 earlier + 65 new). Mutation check: users see all
   tickets in the list, internal notes returned to users, users allowed to post internal notes →
   1 test failed each; all reverted.
+- Screenshots:
+- Time taken:
+
+
+### WP4 — Workflow + assignment   (2026-10-26)
+- Mode: Planned → Run phase (4 tasks)
+- Prompt: "Remove the trailer first  w4 continue"
+- Plan summary: transition table in `services/workflow.py` (defined once, as in §6), status
+  endpoint with 409 + `details.allowed`, automatic `waiting_for_user → in_progress` when the
+  owner replies, `allowed_transitions` on every ticket response, assign/reassign/unassign endpoint.
+- Decisions asked by CodeZero: unassigning allowed (`agent_id: null`); closed tickets can't be
+  assigned (409). Defaults it stated: an agent who opened a ticket gets both agent and owner
+  moves; re-assigning the same agent → 409 `ASSIGNMENT_UNCHANGED`; non-agent assignee → 422.
+- What was generated: `services/workflow.py`, `services/events.py`, status + assign endpoints,
+  90 new tests. The tests write the expected transition table out independently of the code and
+  check the full 5×5 matrix for both roles (9 valid, 41 invalid), so a wrong table entry fails.
+- Departure from the plan: `services/events.py` (shared `add_event` / `utcnow`) was added so
+  `tickets.py` and `workflow.py` don't import each other.
+- Also in this commit: my own edit to PLAN.md §13 (WP12 no longer includes screenshots/video).
+  CodeZero spotted the uncommitted change it hadn't made and asked before including it.
+- Verification: 206 tests pass in Docker (116 earlier + 90 new). Mutation check: owner allowed
+  to resolve an open ticket → 7 failed; auto-transition skipped → 2 failed; non-agent assignee
+  accepted → 1 failed; all reverted.
 - Screenshots:
 - Time taken:
 

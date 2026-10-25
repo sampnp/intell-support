@@ -2,12 +2,12 @@
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Literal
 
 from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.errors import ConflictError, ValidationFailedError
 from app.core.permissions import can_see_internal, ticket_scope
 from app.models.ticket import (
     INTERNAL_EVENT_TYPES,
@@ -19,8 +19,10 @@ from app.models.ticket import (
     TicketPriority,
     TicketStatus,
 )
-from app.models.user import User
+from app.models.user import Role, User
 from app.schemas.tickets import CommentCreate, TicketCreate, TicketUpdate
+from app.services.events import add_event, utcnow
+from app.services.workflow import apply_owner_comment
 
 logger = logging.getLogger("app.tickets")
 
@@ -38,24 +40,6 @@ class TicketFilters:
     page_size: int = 20
 
 
-def _now() -> datetime:
-    return datetime.now(UTC)
-
-
-def _add_event(
-    db: Session,
-    ticket: Ticket,
-    actor: User,
-    event_type: EventType,
-    data: dict[str, Any] | None = None,
-) -> TicketEvent:
-    event = TicketEvent(
-        ticket_id=ticket.id, actor_id=actor.id, event_type=event_type, data=data or {}
-    )
-    db.add(event)
-    return event
-
-
 def create_ticket(db: Session, user: User, data: TicketCreate) -> Ticket:
     ticket = Ticket(
         title=data.title,
@@ -67,7 +51,7 @@ def create_ticket(db: Session, user: User, data: TicketCreate) -> Ticket:
     )
     db.add(ticket)
     db.flush()
-    _add_event(db, ticket, user, EventType.created)
+    add_event(db, ticket, user, EventType.created)
     # WP6: suggestions snapshot (must never fail ticket creation).
     db.commit()
     logger.info("ticket_created ticket_id=%s user_id=%s", ticket.id, user.id)
@@ -112,8 +96,8 @@ def update_ticket(db: Session, user: User, ticket: Ticket, data: TicketUpdate) -
 
     for field in changed:
         setattr(ticket, field, requested[field])
-    ticket.updated_at = _now()
-    _add_event(db, ticket, user, EventType.ticket_updated, {"fields": changed})
+    ticket.updated_at = utcnow()
+    add_event(db, ticket, user, EventType.ticket_updated, {"fields": changed})
     db.commit()
     logger.info("ticket_updated ticket_id=%s fields=%s", ticket.id, ",".join(changed))
     return ticket
@@ -126,9 +110,11 @@ def add_comment(db: Session, user: User, ticket: Ticket, data: CommentCreate) ->
     db.add(comment)
     db.flush()
     event_type = EventType.internal_note_added if data.is_internal else EventType.comment_added
-    _add_event(db, ticket, user, event_type, {"comment_id": comment.id})
-    ticket.updated_at = _now()
-    # WP4: owner comment on a waiting_for_user ticket moves it back to in_progress.
+    add_event(db, ticket, user, event_type, {"comment_id": comment.id})
+    ticket.updated_at = utcnow()
+    if not data.is_internal:
+        # Owner reply on a waiting_for_user ticket moves it back to in_progress (same commit).
+        apply_owner_comment(db, user, ticket)
     db.commit()
     logger.info(
         "comment_added ticket_id=%s comment_id=%s internal=%s",
@@ -137,6 +123,45 @@ def add_comment(db: Session, user: User, ticket: Ticket, data: CommentCreate) ->
         data.is_internal,
     )
     return comment
+
+
+def assign_ticket(db: Session, agent: User, ticket: Ticket, agent_id: int | None) -> Ticket:
+    """Assign, reassign or (agent_id=None) unassign. The caller has checked agent role/status."""
+    if agent_id is not None:
+        assignee = db.get(User, agent_id)
+        if assignee is None or assignee.role != Role.agent:
+            raise ValidationFailedError(
+                "Assignee must be an existing agent",
+                code="ASSIGNEE_NOT_AGENT",
+                details={"agent_id": agent_id},
+            )
+    if agent_id == ticket.assigned_to:
+        raise ConflictError(
+            "Ticket already has that assignment",
+            code="ASSIGNMENT_UNCHANGED",
+            details={"agent_id": agent_id},
+        )
+
+    from_agent_id = ticket.assigned_to
+    ticket.assigned_to = agent_id
+    ticket.updated_at = utcnow()
+    add_event(
+        db,
+        ticket,
+        agent,
+        EventType.assigned,
+        {"from_agent_id": from_agent_id, "to_agent_id": agent_id},
+    )
+    db.commit()
+    db.refresh(ticket, ["assignee"])
+    logger.info(
+        "ticket_assigned ticket_id=%s from_agent_id=%s to_agent_id=%s actor_id=%s",
+        ticket.id,
+        from_agent_id,
+        agent_id,
+        agent.id,
+    )
+    return ticket
 
 
 def list_comments(db: Session, user: User, ticket: Ticket) -> list[TicketComment]:

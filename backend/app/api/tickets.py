@@ -1,19 +1,26 @@
-"""Ticket endpoints: create, list, detail, edit, comments, events."""
+"""Ticket endpoints: create, list, detail, edit, status, assign, comments, events."""
 
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user
-from app.core.permissions import ensure_can_comment, ensure_can_edit, get_visible_ticket
+from app.core.deps import get_current_user, require_agent
+from app.core.permissions import (
+    ensure_can_assign,
+    ensure_can_comment,
+    ensure_can_edit,
+    get_visible_ticket,
+)
 from app.db import get_db
-from app.models.ticket import TicketCategory, TicketPriority, TicketStatus
+from app.models.ticket import Ticket, TicketCategory, TicketPriority, TicketStatus
 from app.models.user import User
 from app.schemas.tickets import (
+    AssignRequest,
     CommentCreate,
     CommentOut,
     EventOut,
+    StatusChange,
     TicketCreate,
     TicketOut,
     TicketPage,
@@ -21,8 +28,15 @@ from app.schemas.tickets import (
     TicketUpdate,
 )
 from app.services import tickets as ticket_service
+from app.services import workflow
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
+
+
+def _ticket_out(ticket: Ticket, user: User) -> TicketOut:
+    out = TicketOut.model_validate(ticket)
+    out.allowed_transitions = workflow.allowed_transitions(user, ticket)
+    return out
 
 
 @router.post("", response_model=TicketOut, status_code=status.HTTP_201_CREATED)
@@ -31,7 +45,7 @@ def create_ticket(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> TicketOut:
-    return TicketOut.model_validate(ticket_service.create_ticket(db, user, data))
+    return _ticket_out(ticket_service.create_ticket(db, user, data), user)
 
 
 @router.get("", response_model=TicketPage)
@@ -70,7 +84,7 @@ def get_ticket(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> TicketOut:
-    return TicketOut.model_validate(get_visible_ticket(db, ticket_id, user))
+    return _ticket_out(get_visible_ticket(db, ticket_id, user), user)
 
 
 @router.patch("/{ticket_id}", response_model=TicketOut)
@@ -82,7 +96,30 @@ def update_ticket(
 ) -> TicketOut:
     ticket = get_visible_ticket(db, ticket_id, user)
     ensure_can_edit(user, ticket)
-    return TicketOut.model_validate(ticket_service.update_ticket(db, user, ticket, data))
+    return _ticket_out(ticket_service.update_ticket(db, user, ticket, data), user)
+
+
+@router.post("/{ticket_id}/status", response_model=TicketOut)
+def change_status(
+    ticket_id: int,
+    data: StatusChange,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TicketOut:
+    ticket = get_visible_ticket(db, ticket_id, user)
+    return _ticket_out(workflow.change_status(db, user, ticket, data.status), user)
+
+
+@router.post("/{ticket_id}/assign", response_model=TicketOut)
+def assign_ticket(
+    ticket_id: int,
+    data: AssignRequest,
+    agent: User = Depends(require_agent),
+    db: Session = Depends(get_db),
+) -> TicketOut:
+    ticket = get_visible_ticket(db, ticket_id, agent)
+    ensure_can_assign(ticket)
+    return _ticket_out(ticket_service.assign_ticket(db, agent, ticket, data.agent_id), agent)
 
 
 @router.get("/{ticket_id}/comments", response_model=list[CommentOut])

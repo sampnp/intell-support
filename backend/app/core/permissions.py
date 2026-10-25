@@ -79,3 +79,9 @@ def ensure_can_comment(user: User, ticket: Ticket, is_internal: bool) -> None:
         )
     if ticket.status == TicketStatus.closed:
         raise ConflictError("Closed tickets cannot take comments", code="TICKET_CLOSED")
+
+
+def ensure_can_assign(ticket: Ticket) -> None:
+    """Agent-only is enforced by `require_agent`; closed tickets are terminal."""
+    if ticket.status == TicketStatus.closed:
+        raise ConflictError("Closed tickets cannot be assigned", code="TICKET_CLOSED")
