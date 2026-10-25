@@ -121,6 +121,29 @@ build this project: planning, implementation, debugging, test generation and ver
 - Time taken:
 
 
+### WP5 — KB ingestion   (2026-10-26)
+- Mode: Planned → Run phase (6 tasks)
+- Prompt: "w5"
+- Plan summary: documents + document_chunks (UUID ids for Qdrant, generated `tsv` + GIN index),
+  upload validation (415/413/400 before anything is stored), PDF/TXT extraction with page
+  numbers, paragraph-aware chunking (~800 chars, ~150 overlap, never across pages), background
+  processing that always ends `ready` or `failed`, agent-only list/detail/delete, Acme Cloud
+  sample KB + malformed fixtures. Embeddings/Qdrant deliberately left to WP6.
+- Decisions asked by CodeZero: sample PDFs built by a generator script (fpdf2) with content it
+  writes; document list/detail agents only; same filename may be uploaded twice. It also flagged
+  that `.gitattributes`' `text=auto` could rewrite the bytes of the deliberately broken fixtures,
+  and marked `sample_kb/malformed/*` binary.
+- What was generated: `services/chunking.py`, `services/ingestion.py`, `api/kb.py`, migration
+  0003, three TXT docs, `scripts/build_sample_kb.py` (3 PDFs + corrupt / image-only /
+  binary-garbage fixtures), 42 new tests. Background tasks get their own DB session through an
+  overridable dependency, so tests run them inside the rolled-back test transaction.
+- Verification: generated guide PDF checked visually (3 pages, real text layer). 248 tests pass in
+  Docker (206 earlier + 42 new). Mutation check: chunks allowed to span pages → 4 failed; `%PDF`
+  check skipped → 1 failed; image-only PDF marked ready → 1 failed; all reverted.
+- Screenshots:
+- Time taken:
+
+
 ---
 
 ## Summary (written at the end)

@@ -34,6 +34,24 @@ class AppError(Exception):
         super().__init__(self.message)
 
 
+class BadRequestError(AppError):
+    status_code = 400
+    code = "BAD_REQUEST"
+    message = "Bad request"
+
+
+class PayloadTooLargeError(AppError):
+    status_code = 413
+    code = "PAYLOAD_TOO_LARGE"
+    message = "Payload too large"
+
+
+class UnsupportedMediaTypeError(AppError):
+    status_code = 415
+    code = "UNSUPPORTED_MEDIA_TYPE"
+    message = "Unsupported media type"
+
+
 class UnauthorizedError(AppError):
     status_code = 401
     code = "UNAUTHORIZED"

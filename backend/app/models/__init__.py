@@ -4,6 +4,7 @@ Every model module must be imported here so that `Base.metadata` (used by Alembi
 """
 
 from app.db import Base
+from app.models.document import Document, DocumentChunk, DocumentStatus
 from app.models.ticket import (
     EventType,
     Ticket,
@@ -17,6 +18,9 @@ from app.models.user import Role, User
 
 __all__ = [
     "Base",
+    "Document",
+    "DocumentChunk",
+    "DocumentStatus",
     "EventType",
     "Role",
     "Ticket",

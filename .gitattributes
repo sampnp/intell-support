@@ -9,3 +9,5 @@
 *.jpg binary
 *.gif binary
 *.mp4 binary
+# Deliberately broken fixtures: keep their bytes exactly as generated.
+sample_kb/malformed/* binary

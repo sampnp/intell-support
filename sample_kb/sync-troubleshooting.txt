@@ -1,0 +1,47 @@
+Acme Cloud - Sync Troubleshooting
+
+The Acme Cloud desktop app keeps a local folder in sync with your cloud storage. This guide explains how to fix sync conflicts, uploads that are stuck, storage quota problems and selective sync settings.
+
+1. Checking sync status
+
+The Acme Cloud icon in the system tray (Windows) or menu bar (macOS) shows the current state. A green tick means everything is up to date, blue arrows mean files are being uploaded or downloaded, and a red cross means sync is paused because of an error. Click the icon and choose "View sync activity" to see which files are waiting and why.
+
+2. Sync conflicts
+
+A conflict happens when the same file is changed in two places before either change has synced, for example on your laptop while offline and on the web at the same time. Acme Cloud never silently overwrites your work. Instead it keeps both versions and renames one of them to "filename (conflicted copy from DEVICE-NAME on DATE)".
+
+To resolve a conflict, open both versions, merge the changes you want to keep into the original file and delete the conflicted copy. If you often see conflicted copies for the same document, make sure only one person edits it at a time, or use the web editor, which supports live co-editing.
+
+Conflicted copies count towards your storage quota until you delete them.
+
+3. Uploads stuck at "Syncing" or "Waiting"
+
+If files stay on "Syncing" for a long time, first check your internet connection and whether the app is paused (click the icon and choose "Resume syncing").
+
+Files that are open in another program, such as a spreadsheet that is still being edited, are skipped until the program closes them. Close the program and the upload starts automatically.
+
+File names containing characters that are not allowed on every platform (for example < > : " | ? * or a trailing space or dot) cannot sync. The sync activity list marks these files with "Invalid file name"; rename them to fix the problem.
+
+Single files larger than 50 GB cannot be uploaded with the desktop app. Very large files upload in parts; if your connection drops, the upload resumes from the last completed part instead of starting over.
+
+If an upload is still stuck after these checks, sign out of the desktop app and sign in again. This rebuilds the local sync index without deleting any files. As a last resort, go to Preferences > Advanced and choose "Rebuild sync database".
+
+4. Storage quota
+
+Every plan has a storage quota: Free accounts have 5 GB, Personal 2 TB and Business 5 TB per user. Files in the trash, previous file versions and conflicted copies all count towards the quota.
+
+When you reach your quota, syncing stops and the tray icon shows "Storage full". New and changed files stay on your computer but are not uploaded. To free space, empty the trash on the web (Trash > Empty trash), delete old versions of large files, or upgrade your plan. Syncing resumes automatically as soon as you are under the quota again.
+
+Files shared with you by other people do not count towards your own quota; they count towards the owner's quota.
+
+5. Selective sync
+
+Selective sync lets you choose which cloud folders are downloaded to this computer. It is useful on laptops with small disks. Open Preferences > Sync > Choose folders and untick the folders you do not need locally.
+
+Unticked folders are removed from this computer only; they stay safe in the cloud and on your other devices. Ticking a folder again downloads it in the background.
+
+Do not move a folder out of the Acme Cloud folder to save space - the desktop app treats that as a deletion and moves the folder to the trash in the cloud. Use selective sync instead.
+
+6. Online-only files
+
+On Windows and macOS you can mark files as "online-only". They appear in your Acme Cloud folder but take up no disk space until you open them. Right-click a file or folder and choose "Make online-only" or "Make available offline".

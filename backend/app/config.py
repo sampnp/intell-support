@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 480
     jwt_algorithm: str = "HS256"
 
+    # --- Knowledge base ---
+    max_upload_mb: int = 10
+    # Where the Acme Cloud sample documents are mounted (docker-compose.yml).
+    sample_kb_dir: str = "/sample_kb"
+
     # --- App ---
     log_level: str = "INFO"
     # Comma-separated list, e.g. "http://localhost:5173,http://127.0.0.1:5173"
