@@ -339,6 +339,10 @@ hand. No requirement from the assignment brief was dropped.
 - Append an entry for the WP to `docs/CODEZERO_NOTES.md` using the template in that file.
 - Run `docker compose run --rm backend pytest -q` and only commit if it passes. Frontend WPs
   must also pass `npm run build`.
+- In a plan's verification steps, check health with
+  `curl.exe -s --retry 15 --retry-delay 1 --retry-all-errors http://localhost:8000/api/health`,
+  never a bare `curl.exe -s …`: uvicorn `--reload` opens the port ~2s before the app can answer,
+  so a single call right after a restart gets an empty reply (exit 52).
 - Commit messages: `WPn: <short summary>`. Never add `Co-Authored-By`, "Generated with",
   or any AI attribution lines to commits or PRs.
 - Include the `.code0/` folder in the commit.
