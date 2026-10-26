@@ -175,6 +175,32 @@ build this project: planning, implementation, debugging, test generation and ver
 - Time taken:
 
 
+### WP7 — Backend wrap-up   (2026-10-26)
+- Mode: Planned → Run phase (4 tasks)
+- Prompt: "w7"
+- Plan summary: `scripts/seed.py` (2 agents, 2 users, sample KB indexed, 8 tickets covering every
+  status built through the real services), `GET /api/dashboard/agent`, `GET /api/users/agents`.
+- Decisions asked by CodeZero: a plain seed run skips when already seeded and `--reset` wipes and
+  reseeds; verification may reset the dev DB (also clears WP6's orphan Qdrant points);
+  "waiting for user" and "urgent" cards count the whole team, "my open" is personal.
+- Issue: code0 auto-committed my uncommitted PLAN.md replan with its `Co-authored-by: Code-Zero`
+  trailer when I pressed Run, and on later Runs moved `main` back and made more auto-commits on
+  its own branches. CodeZero stopped before building, a small fix plan re-committed the replan,
+  and when code0 undid that too, CodeZero branched WP7 from the clean `main` and re-applied my
+  replan as file edits (diff against code0's commit: empty). So the replan is part of this
+  commit, and no trailer commit is an ancestor of `main`. Lesson: commit my own edits before
+  pressing Run.
+- What was generated: `services/dashboard.py`, dashboard + users routers, `scripts/seed.py`,
+  `VectorStore.drop_collection`, 13 new tests.
+- Mutation check found a gap: counting resolved tickets as "unassigned" passed all tests (no test
+  had an unassigned *resolved* ticket). Added one; now it fails. Agents list returning users →
+  1 failed; no already-seeded check → 1 failed; all reverted.
+- Verification: 325 tests pass in Docker (312 earlier + 13 new); dev stack seeded with `--reset`
+  and a plain re-run reports "already seeded".
+- Screenshots:
+- Time taken:
+
+
 ---
 
 ## Summary (written at the end)
