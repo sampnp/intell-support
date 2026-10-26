@@ -62,7 +62,7 @@ def test_sample_document_ingests(
     document = detail(client, auth_headers, agent, accepted["id"]).json()
     assert document["status"] == "ready"
     assert document["error_message"] is None
-    assert document["vector_indexed"] is False
+    assert document["vector_indexed"] is True
 
     chunks = chunks_of(db_session, accepted["id"])
     assert document["chunk_count"] == len(chunks) > 0

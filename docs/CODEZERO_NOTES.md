@@ -144,6 +144,37 @@ build this project: planning, implementation, debugging, test generation and ver
 - Time taken:
 
 
+### WP6 — Retrieval   (2026-10-26)
+- Mode: Planned → Run phase (6 tasks)
+- Prompt: "okay w6"
+- Plan summary: fastembed `bge-small-en-v1.5` baked into the image, shared Qdrant client +
+  `kb_chunks` wrapper, keyword search over `document_chunks.tsv`, semantic-first retrieval with
+  keyword fallback and a score threshold, `/api/kb/search`, indexing on ingest, reindex, delete
+  from both stores, and a suggestions snapshot on ticket creation with refresh.
+- Decisions asked by CodeZero: snapshot mode + time stored on the ticket (two nullable columns,
+  so an empty snapshot still says which mode ran); explicit `mode=semantic` with Qdrant/model
+  down → 503 instead of a silent fallback.
+- Decision raised during the build: a test showed that keyword search with "all words must
+  match" (`websearch_to_tsquery`, as in the spec) almost never matches a whole ticket's title +
+  description, so fallback suggestions would always be empty. CodeZero stopped and asked instead
+  of changing the spec on its own; chose "all words first, then any word, ranked".
+- Issue found and fixed: until the test overrides existed, two test runs used the real model and
+  wrote test points into the dev Qdrant collection (harmless orphans: search joins back to
+  Postgres). The overrides were moved forward so tests never touch the real Qdrant again.
+- What was generated: `services/embeddings.py`, `vector_store.py` (rewritten),
+  `keyword_search.py`, `retrieval.py`, `suggestions.py`, migration 0004, search / reindex /
+  suggestions endpoints, a deterministic hashing fake embedder, 63 new tests incl. one slow test
+  with the real model (4 natural-language queries hit their document in the top 3 at 0.5).
+- Also in this commit: my replan of PLAN.md §13 (WP7–WP12 folded into WP7–WP10; eval script a
+  stretch goal; one Playwright smoke spec; no live suggestions while typing). CodeZero spotted
+  the uncommitted edit before committing and asked whether to include it.
+- Verification: 312 tests pass in Docker (249 earlier + 63 new). Mutation check: `auto` doesn't
+  fall back → 3 failed; threshold not applied → 2 failed; ticket creation unprotected from
+  retrieval errors → 1 failed; all reverted.
+- Screenshots:
+- Time taken:
+
+
 ---
 
 ## Summary (written at the end)

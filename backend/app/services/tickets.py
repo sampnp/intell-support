@@ -1,6 +1,7 @@
 """Ticket, comment and event logic. Every change and its ticket_events row share one commit."""
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -40,7 +41,14 @@ class TicketFilters:
     page_size: int = 20
 
 
-def create_ticket(db: Session, user: User, data: TicketCreate) -> Ticket:
+def create_ticket(
+    db: Session,
+    user: User,
+    data: TicketCreate,
+    suggest: Callable[[Ticket], None] | None = None,
+) -> Ticket:
+    """Create the ticket and its `created` event, then (optionally) take the suggestions
+    snapshot. `suggest` runs after the commit and never raises, so it can't fail creation."""
     ticket = Ticket(
         title=data.title,
         description=data.description,
@@ -52,9 +60,10 @@ def create_ticket(db: Session, user: User, data: TicketCreate) -> Ticket:
     db.add(ticket)
     db.flush()
     add_event(db, ticket, user, EventType.created)
-    # WP6: suggestions snapshot (must never fail ticket creation).
     db.commit()
     logger.info("ticket_created ticket_id=%s user_id=%s", ticket.id, user.id)
+    if suggest is not None:
+        suggest(ticket)
     return ticket
 
 

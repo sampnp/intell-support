@@ -83,6 +83,12 @@ class ValidationFailedError(AppError):
     message = "Validation failed"
 
 
+class ServiceUnavailableError(AppError):
+    status_code = 503
+    code = "SERVICE_UNAVAILABLE"
+    message = "Service unavailable"
+
+
 HTTP_STATUS_CODES = {
     400: "BAD_REQUEST",
     401: "UNAUTHORIZED",

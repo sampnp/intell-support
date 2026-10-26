@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.schemas.health import HealthResponse
+from app.services.embeddings import Embedder, get_embedder
 from app.services.vector_store import get_qdrant_client
 
 logger = logging.getLogger("app.health")
@@ -37,16 +38,26 @@ def _check_qdrant(client: QdrantClient) -> str:
         return "error"
 
 
+def _check_embedder(embedder: Embedder) -> str:
+    try:
+        # Loads the model on first call (1-2 s), then it is cached.
+        embedder.check()
+        return "ok"
+    except Exception as exc:
+        logger.warning("health_check component=embedder error=%r", exc)
+        return "error"
+
+
 @router.get("/health", response_model=HealthResponse)
 def health(
     db: Session = Depends(get_db),
     qdrant: QdrantClient = Depends(get_qdrant_client),
+    embedder: Embedder = Depends(get_embedder),
 ) -> HealthResponse:
     db_status = _check_db(db)
     qdrant_status = _check_qdrant(qdrant)
-    # The embedder is added in WP6.
-    embedder_status = "not_configured"
-    degraded = "error" in (db_status, qdrant_status)
+    embedder_status = _check_embedder(embedder)
+    degraded = "error" in (db_status, qdrant_status, embedder_status)
     return HealthResponse(
         status="degraded" if degraded else "ok",
         db=db_status,
