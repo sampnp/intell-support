@@ -213,8 +213,8 @@ build this project: planning, implementation, debugging, test generation and ver
   :5173 and a backend healthcheck so the frontend waits until the API really answers.
 - Decisions asked by CodeZero: Vite dev server with hot reload (not nginx); Vitest + Testing
   Library for the risky parts (not build-only).
-- Issue: the same code0 auto-commit happened again (my PLAN.md curl rule, pushed onto `main` with
-  the trailer). Running the fix commands myself didn't happen between Runs, so CodeZero added the
+- Issue: the same code0 auto-commit happened again (my PLAN.md curl rule, committed onto local
+  `main` with the trailer; never pushed). Running the fix commands myself didn't happen between Runs, so CodeZero added the
   fix as step 0 of this plan: one approval and one Run re-committed it cleanly
   ("Docs: health checks use a retrying curl", diff vs code0's commit: empty) and then built WP8.
 - Second issue, just before committing: local `main` was moved back to the WP4 commit and HEAD
@@ -237,11 +237,87 @@ build this project: planning, implementation, debugging, test generation and ver
 - Time taken:
 
 
+### WP9 — Delivery   (2026-10-26)
+- Mode: Planned → Run phase (5 tasks)
+- Prompt: "w9"
+- Plan summary: README rewrite (quick start, demo accounts, tests, everyday commands,
+  architecture, API reference, key decisions, threshold notes, limitations, layout), the stretch
+  retrieval evaluation script, this summary.
+- Decisions asked by CodeZero: add `scripts/eval_retrieval.py` so the threshold is backed by
+  numbers; CodeZero drafts this summary for me to edit.
+- Decision raised by the evaluation: with the real model, 0.5 let 1 of 4 off-topic questions
+  through ("change the oil in my car", 0.536) while every relevant question scored ≥ 0.654.
+  CodeZero reported it instead of changing it; I chose 0.6 (sweep: 0.55–0.65 answer 12/12
+  relevant and 0/4 off-topic). Default changed in `config.py` and `.env.example`; my own `.env`
+  still needs updating by hand.
+- Results: semantic hit@3 0.92, MRR@10 0.93; keyword hit@3 0.92, MRR@10 0.89.
+- Repo repair: after WP8 finished, code0 had moved local refs again and auto-committed the WP8
+  checkbox with its trailer onto `wp8-frontend` (local only). Step 0 of this plan moved `main`
+  to `origin/main` (refs only), re-committed the checkbox cleanly and pushed it before WP9 began.
+- Verification: backend 336 tests (325 + 11 for the eval script), frontend 36 tests + build,
+  README commands walked against the running stack; mutation check on the MRR helper (3 failed,
+  reverted).
+- Deviation: during the run HEAD was switched from `wp9-delivery` to `main` again (same commit,
+  nothing lost), and the plan's commands couldn't switch back. I chose to commit WP9 directly on
+  `main` instead of a branch + `--no-ff` merge; the empty `wp9-delivery` branch wasn't pushed.
+- Screenshots:
+- Time taken:
+
+
 ---
 
 ## Summary (written at the end)
 
-- Where CodeZero helped most:
-- Where its output was wrong or needed correction:
-- How generated code was verified:
-- What I would do differently:
+> **Draft written by CodeZero from this log — review and edit before submitting.** Everything
+> below is taken from the WP entries above; replace or add your own judgement where it differs.
+
+- **Where CodeZero helped most:**
+  - **Questions the spec didn't answer.** It asked about these before writing code instead of
+    guessing:
+    - the embedder status before WP6 existed
+    - what register returns
+    - comments on closed tickets
+    - who sets priority
+    - unassigning
+    - where a suggestions snapshot records its mode
+    - what explicit semantic search does when Qdrant is down
+  - **Gaps it flagged unprompted:**
+    - bcrypt's 72-byte limit
+    - FastAPI's 403-instead-of-401 for a missing token
+    - email-validator rejecting `.test` domains
+    - `.gitattributes` rewriting the deliberately broken fixtures
+  - **Stopping instead of improvising.** When a test showed all-words keyword search never matches
+    a whole ticket (WP6), when the eval showed 0.5 was too low (WP9), and every time code0's
+    auto-commits or branch moves put an AI trailer or a wrong base under `main`, it stopped and
+    asked. No trailer commit was ever pushed to `main`.
+  - **Plans as a record.** Each WP has an approved plan in `docs/codezero/plans/` and an entry
+    here.
+- **Where its output was wrong or needed correction:**
+  - **WP6:** before the test overrides existed, two test runs used the real model and wrote test
+    points into the dev Qdrant collection. They were harmless orphans, cleared by the WP7 reset.
+  - **WP6:** keyword fallback as specified (all words) was useless for ticket suggestions. A test
+    found it, and the fix was all words first, then any word.
+  - **WP7:** a test gap, where counting resolved tickets as "unassigned" passed every test. The
+    mutation check found it and a test was added.
+  - **WP2–WP8:** small plan deviations, each reported:
+    - a shared `events.py` to avoid a circular import
+    - a raw-header check for non-Bearer tokens
+    - placeholder pages during the frontend build
+  - **WP9:** one unverified claim in the README draft (which packages `npm audit` flags) was
+    caught and reworded before committing.
+- **How generated code was verified:**
+  - Every WP ran the full test suite in Docker before committing: 336 backend tests (including
+    one with the real embedding model) and 36 frontend tests plus a production build at the end.
+  - Every WP had a **mutation check**: core rules were deliberately broken to confirm the tests
+    fail, then reverted. It caught a real gap in WP7.
+  - Running-stack checks: health, the dev server, the CORS preflight, and seeding with a
+    "skipped" re-run. Retrieval quality was measured with `scripts/eval_retrieval.py`.
+  - Branches and commits were checked for foreign changes before every push.
+  - The browser click-through and screenshots were done by hand.
+- **What I would do differently:**
+  - Commit my own edits before pressing Run. Every trailer and branch problem in WP3 and WP7–WP9
+    started with a dirty tree when a plan was run, or with pressing Run while a plan was mid-way.
+  - Put the definition-of-done steps, such as the checkbox commit, into the workflow from WP1,
+    rather than discovering them in WP3.
+  - Keep one WP per plan. It kept reviews short and the history readable.
+  - Measure the retrieval threshold as soon as the retrieval code exists (WP6), not at the end.
