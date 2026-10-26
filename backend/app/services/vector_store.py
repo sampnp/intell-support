@@ -33,6 +33,11 @@ class VectorStore:
                 vectors_config=qm.VectorParams(size=self.dim, distance=qm.Distance.COSINE),
             )
 
+    def drop_collection(self) -> None:
+        """Delete the whole collection (seed --reset); ensure_collection recreates it."""
+        if self.client.collection_exists(self.collection):
+            self.client.delete_collection(self.collection)
+
     def upsert_chunks(
         self,
         document: Document,

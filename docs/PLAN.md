@@ -71,7 +71,7 @@ intell-support/
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/ (api/, pages/, components/, hooks/, context/)
-│   ├── e2e/                     # Playwright smoke spec
+│   ├── e2e/                     # Playwright smoke spec (stretch)
 │   └── Dockerfile
 ├── sample_kb/                   # Acme Cloud KB documents
 │   └── malformed/               # bad files used by tests
@@ -241,7 +241,7 @@ Search / suggestions response:
 **On ticket creation:** query = `title + "\n" + description`, k = 3, snapshot into
 `ticket_suggestions`. Retrieval failure must **never** fail ticket creation (log + empty snapshot).
 
-**Evaluation (stretch, only if time remains after WP10):** `scripts/eval_retrieval.py` runs ~12
+**Evaluation (stretch, only if time remains after WP9):** `scripts/eval_retrieval.py` runs ~12
 labelled queries (query → expected document) and prints hit@3 and MRR for semantic and keyword
 modes. Until then the threshold is picked by hand against the sample KB and noted in the README.
 
@@ -304,9 +304,9 @@ JWT stored in `localStorage`; API client attaches it and redirects to login on 4
   Qdrant failure → keyword fallback with `mode = keyword`; deleting a doc removes it from both stores.
 - One `@pytest.mark.slow` test with the real fastembed model over `sample_kb/`.
 
-**Playwright** (`frontend/e2e/`): one smoke spec against the seeded stack — user logs in, creates
-a ticket and sees suggestions with sources; agent assigns, replies and resolves; user closes.
-Permission cases stay covered by pytest.
+**Playwright** (`frontend/e2e/`, stretch, only if time remains after WP9): one smoke spec against
+the seeded stack — user logs in, creates a ticket and sees suggestions with sources; agent
+assigns, replies and resolves; user closes. Permission cases stay covered by pytest.
 
 ---
 
@@ -314,11 +314,11 @@ Permission cases stay covered by pytest.
 
 Each WP is one CodeZero planned session → reviewed plan → tasks → tests green → commit.
 
-**Replan (2026-10-26, during WP6):** the original WP7–WP12 were merged into WP7–WP10 to finish
-sooner. Simplified: the retrieval eval script became a stretch goal, the new-ticket form no
-longer shows live suggestions (they appear on the ticket page after creation), Playwright went
-from three specs to one smoke spec, and ARCHITECTURE.md / API.md were folded into the README.
-No requirement from the assignment brief was dropped.
+**Replan (2026-10-26, during WP6):** the original WP7–WP12 were merged into WP7–WP9 to finish
+sooner. Simplified: the retrieval eval script and the Playwright smoke spec became stretch goals,
+the new-ticket form no longer shows live suggestions (they appear on the ticket page after
+creation), and ARCHITECTURE.md / API.md were folded into the README. Screenshots are taken by
+hand. No requirement from the assignment brief was dropped.
 
 | WP | Scope | Done when |
 |---|---|---|
@@ -330,9 +330,8 @@ No requirement from the assignment brief was dropped.
 | WP5 | KB ingestion: documents/chunks models + migration, upload validation, extraction, chunking, background processing, list/detail/delete, sample KB docs + malformed fixtures | ✅ done |
 | WP6 | Retrieval: embedder, Qdrant store, keyword search, retrieval service with fallback + threshold, `/api/kb/search`, suggestions on ticket create, refresh, reindex | retrieval tests green |
 | WP7 | Backend wrap-up: seed script (2 agents, 2 users, sample KB ingested, ~8 tickets across all statuses with comments and internal notes; emails on a normal domain such as `@acme-demo.com`, because `.test`/`.local` are rejected), `GET /api/dashboard/agent`, `GET /api/users/agents` | seeded demo works; tests green |
-| WP8 | Frontend core: Vite + React (JS) + Tailwind + Router + TanStack Query, API client, auth context, layout/nav, login/register, ticket list (search + filters), new ticket form, ticket detail (thread, timeline, agent/owner controls, suggestions panel with "Insert into reply"), Dockerfile, `frontend` compose service | full ticket flow works in the browser against the seeded backend |
-| WP9 | Agent dashboard page, KB page (upload, document table, search panel), one Playwright smoke spec (§12) | dashboard and KB flows work in browser; smoke spec green |
-| WP10 | Delivery: README (setup, running locally, running tests, architecture overview, API reference table + link to `/docs`, key decisions, retrieval threshold notes), final summary in `CODEZERO_NOTES.md`. Screenshots are taken by hand, not by CodeZero; the README links to whatever is in `docs/screenshots/` | a fresh clone runs from the README alone |
+| WP8 | Frontend: Vite + React (JS) + Tailwind + Router + TanStack Query, API client, auth context, layout/nav, login/register, ticket list (search + filters), new ticket form, ticket detail (thread, timeline, agent/owner controls, suggestions panel with "Insert into reply"), agent dashboard page, KB page (upload, document table, search panel), Dockerfile, `frontend` compose service | every page in §11 works in the browser against the seeded backend |
+| WP9 | Delivery: README (setup, running locally, running tests, architecture overview, API reference table + link to `/docs`, key decisions, retrieval threshold notes), final summary in `CODEZERO_NOTES.md`. Screenshots are taken by hand, not by CodeZero; the README links to whatever is in `docs/screenshots/` | a fresh clone runs from the README alone |
 
 ### Definition of done for every work package
 
