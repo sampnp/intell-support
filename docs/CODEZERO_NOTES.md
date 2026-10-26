@@ -201,6 +201,42 @@ build this project: planning, implementation, debugging, test generation and ver
 - Time taken:
 
 
+### WP8 — Frontend   (2026-10-26)
+- Mode: Planned → Run phase (8 tasks)
+- Prompt: "w8"
+- Plan summary: Vite + React (JS) + Tailwind + Router + TanStack Query; API client with the error
+  envelope and 401 → logout; auth context; role-aware layout; login/register; ticket list
+  (search, filters in the URL, prev/next); new ticket; ticket detail (thread with highlighted
+  internal notes, timeline, status buttons from `allowed_transitions`, assign, reply with an
+  internal-note toggle, suggestions panel with "Insert into reply"); agent dashboard; KB page
+  (search for everyone; upload, document table, reindex/delete for agents). Docker dev server on
+  :5173 and a backend healthcheck so the frontend waits until the API really answers.
+- Decisions asked by CodeZero: Vite dev server with hot reload (not nginx); Vitest + Testing
+  Library for the risky parts (not build-only).
+- Issue: the same code0 auto-commit happened again (my PLAN.md curl rule, pushed onto `main` with
+  the trailer). Running the fix commands myself didn't happen between Runs, so CodeZero added the
+  fix as step 0 of this plan: one approval and one Run re-committed it cleanly
+  ("Docs: health checks use a retrying curl", diff vs code0's commit: empty) and then built WP8.
+- Second issue, just before committing: local `main` was moved back to the WP4 commit and HEAD
+  switched, outside CodeZero's commands (it had run no git command since creating the branch).
+  CodeZero stopped instead of committing on the wrong base, confirmed nothing was lost (WP8 was
+  all in the working tree; `wp8-frontend` and `origin/main` intact), and added a refs-only repair
+  to the plan (`git symbolic-ref HEAD refs/heads/wp8-frontend`, `git reset -q`,
+  `git branch -f main 79d1806`). After the repair everything was re-verified before committing.
+  Lesson: commit my own edits before pressing Run, and don't press Run while a plan is mid-way.
+- Note for later: `npm audit` reports 12 advisories (5 moderate, 5 high, 2 critical) in the
+  pinned 2024 dev toolchain. Versions were left as approved; upgrading is a separate decision.
+- What was generated: ~25 source files under `frontend/src`, Dockerfile, compose changes,
+  `package-lock.json`, 36 Vitest tests in 5 files.
+- Verification: 36 frontend tests pass, `npm run build` passes, backend 325 tests still pass;
+  stack started with the backend healthcheck; dev server serves the app; CORS preflight from
+  :5173 allowed. Mutation check: status buttons show every status → 2 failed; "Insert into reply"
+  shown to users → 1 failed; no token clear on 401 → 1 failed; all reverted. Browser
+  click-through by hand.
+- Screenshots:
+- Time taken:
+
+
 ---
 
 ## Summary (written at the end)

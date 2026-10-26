@@ -1,5 +1,4 @@
-# Infrastructure services plus the backend (WP1). The frontend service is added in
-# docs/PLAN.md work package WP8.
+# Postgres, Qdrant, the FastAPI backend (WP1) and the Vite frontend dev server (WP8).
 services:
   postgres:
     image: postgres:16-alpine
@@ -52,6 +51,32 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
+    # uvicorn --reload opens the port before the app can answer; "healthy" means /api/health
+    # really responded (it is always 200, reporting "degraded" when a dependency is down).
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=5)"
+      interval: 5s
+      timeout: 6s
+      start_period: 20s
+      retries: 30
+
+  frontend:
+    build: ./frontend
+    # Provides VITE_API_BASE_URL (the browser calls the backend directly; CORS allows :5173).
+    env_file: .env
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      # Keep the image's node_modules instead of the (absent) host folder.
+      - /app/node_modules
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   pgdata:
