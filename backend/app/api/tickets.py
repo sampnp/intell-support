@@ -1,4 +1,4 @@
-"""Ticket endpoints: create, list, detail, edit, status, assign, comments, events."""
+"""Ticket endpoints: create, list, detail, edit, status, assign, comments, events, suggestions."""
 
 from typing import Literal
 
@@ -27,8 +27,12 @@ from app.schemas.tickets import (
     TicketSummary,
     TicketUpdate,
 )
+from app.schemas.retrieval import SuggestionsResponse
+from app.services import suggestions as suggestion_service
 from app.services import tickets as ticket_service
 from app.services import workflow
+from app.services.embeddings import Embedder, get_embedder
+from app.services.vector_store import VectorStore, get_vector_store
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -44,8 +48,16 @@ def create_ticket(
     data: TicketCreate,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    embedder: Embedder = Depends(get_embedder),
+    store: VectorStore = Depends(get_vector_store),
 ) -> TicketOut:
-    return _ticket_out(ticket_service.create_ticket(db, user, data), user)
+    ticket = ticket_service.create_ticket(
+        db,
+        user,
+        data,
+        suggest=lambda t: suggestion_service.snapshot_suggestions(db, t, embedder, store),
+    )
+    return _ticket_out(ticket, user)
 
 
 @router.get("", response_model=TicketPage)
@@ -154,3 +166,26 @@ def list_events(
 ) -> list[EventOut]:
     ticket = get_visible_ticket(db, ticket_id, user)
     return [EventOut.model_validate(e) for e in ticket_service.list_events(db, user, ticket)]
+
+
+@router.get("/{ticket_id}/suggestions", response_model=SuggestionsResponse)
+def get_suggestions(
+    ticket_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SuggestionsResponse:
+    ticket = get_visible_ticket(db, ticket_id, user)
+    return SuggestionsResponse.model_validate(suggestion_service.get_suggestions(db, ticket))
+
+
+@router.post("/{ticket_id}/suggestions/refresh", response_model=SuggestionsResponse)
+def refresh_suggestions(
+    ticket_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    embedder: Embedder = Depends(get_embedder),
+    store: VectorStore = Depends(get_vector_store),
+) -> SuggestionsResponse:
+    ticket = get_visible_ticket(db, ticket_id, user)
+    suggestion_service.snapshot_suggestions(db, ticket, embedder, store)
+    return SuggestionsResponse.model_validate(suggestion_service.get_suggestions(db, ticket))

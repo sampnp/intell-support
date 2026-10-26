@@ -22,8 +22,13 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "kb_chunks"
 
-    # --- Embeddings ---
+    # --- Embeddings / retrieval ---
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_dim: int = 384
+    # Downloaded at image build time (Dockerfile); outside /app so the dev bind mount keeps it.
+    embedding_cache_dir: str = "/opt/fastembed"
+    # Semantic results scoring below this are dropped (docs/PLAN.md §9); tuned in WP7.
+    retrieval_score_threshold: float = 0.5
 
     # --- Auth ---
     # Required: the app refuses to start rather than sign tokens with a known default key.

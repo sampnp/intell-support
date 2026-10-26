@@ -1,4 +1,4 @@
-"""KB ingestion (docs/PLAN.md §9): validate -> extract -> chunk -> store -> (index, WP6).
+"""KB ingestion (docs/PLAN.md §9): validate -> extract -> chunk -> store -> index.
 
 Uploads are validated synchronously; extraction, chunking and storage run in a background task
 with their own database session. Processing never raises: a document always ends `ready` or
@@ -14,13 +14,22 @@ from io import BytesIO
 from pathlib import PurePath
 
 from pypdf import PdfReader
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.errors import BadRequestError, PayloadTooLargeError, UnsupportedMediaTypeError
+from app.core.errors import (
+    BadRequestError,
+    ConflictError,
+    PayloadTooLargeError,
+    ServiceUnavailableError,
+    UnsupportedMediaTypeError,
+)
 from app.db import SessionLocal
 from app.models.document import Document, DocumentChunk, DocumentStatus
 from app.models.user import User
 from app.services.chunking import chunk_pages
+from app.services.embeddings import Embedder
+from app.services.vector_store import VectorStore
 
 logger = logging.getLogger("app.ingestion")
 
@@ -135,8 +144,40 @@ def _mark_failed(db: Session, document: Document, message: str) -> None:
     db.commit()
 
 
-def process_document(db: Session, document: Document, data: bytes, kind: str) -> Document:
-    """Extract, chunk and store. Never raises; the outcome is on the document."""
+def index_chunks(
+    embedder: Embedder, store: VectorStore, document: Document, chunks: list[DocumentChunk]
+) -> None:
+    """Embed the chunks and upsert them into Qdrant. Raises on any embedder/Qdrant failure."""
+    store.ensure_collection()
+    vectors = embedder.embed_passages([chunk.text for chunk in chunks])
+    store.upsert_chunks(document, chunks, vectors)
+
+
+def _try_index(
+    embedder: Embedder | None,
+    store: VectorStore | None,
+    document: Document,
+    chunks: list[DocumentChunk],
+) -> bool:
+    if embedder is None or store is None:
+        return False
+    try:
+        index_chunks(embedder, store, document, chunks)
+        return True
+    except Exception as exc:
+        logger.warning("ingestion_vector_index_failed document_id=%s error=%r", document.id, exc)
+        return False
+
+
+def process_document(
+    db: Session,
+    document: Document,
+    data: bytes,
+    kind: str,
+    embedder: Embedder | None = None,
+    store: VectorStore | None = None,
+) -> Document:
+    """Extract, chunk, store and index. Never raises; the outcome is on the document."""
     started = time.perf_counter()
     pages_count = 0
     error: str | None = None
@@ -146,7 +187,7 @@ def process_document(db: Session, document: Document, data: bytes, kind: str) ->
         chunks = chunk_pages(pages)
         if not chunks:
             raise ExtractionError(NO_TEXT_MESSAGE)
-        db.add_all(
+        rows = [
             DocumentChunk(
                 document_id=document.id,
                 chunk_index=chunk.chunk_index,
@@ -154,12 +195,14 @@ def process_document(db: Session, document: Document, data: bytes, kind: str) ->
                 text=chunk.text,
             )
             for chunk in chunks
-        )
-        # WP6: embed + upsert into Qdrant here; on failure keep vector_indexed = False.
+        ]
+        db.add_all(rows)
+        db.flush()  # assigns the chunk UUIDs, which are also the Qdrant point ids
         document.status = DocumentStatus.ready
-        document.chunk_count = len(chunks)
-        document.vector_indexed = False
+        document.chunk_count = len(rows)
         document.error_message = None
+        # Postgres holds the chunks either way; a vector failure only disables semantic search.
+        document.vector_indexed = _try_index(embedder, store, document, rows)
         db.commit()
     except ExtractionError as exc:
         db.rollback()
@@ -174,10 +217,12 @@ def process_document(db: Session, document: Document, data: bytes, kind: str) ->
     duration_ms = (time.perf_counter() - started) * 1000
     if error is None:
         logger.info(
-            "ingestion document_id=%s status=ready pages=%s chunks=%s duration_ms=%.1f",
+            "ingestion document_id=%s status=ready pages=%s chunks=%s vector_indexed=%s "
+            "duration_ms=%.1f",
             document.id,
             pages_count,
             document.chunk_count,
+            document.vector_indexed,
             duration_ms,
         )
     else:
@@ -199,6 +244,8 @@ def ingest_bytes(
     *,
     max_bytes: int,
     title: str | None = None,
+    embedder: Embedder | None = None,
+    store: VectorStore | None = None,
 ) -> Document:
     """Validate, create and process synchronously (tests, seed script)."""
     upload = validate_upload(filename, data, max_bytes)
@@ -210,7 +257,41 @@ def ingest_bytes(
         size_bytes=len(data),
         title=title,
     )
-    return process_document(db, document, data, upload.kind)
+    return process_document(db, document, data, upload.kind, embedder, store)
+
+
+def reindex_document(
+    db: Session, document: Document, embedder: Embedder, store: VectorStore
+) -> Document:
+    """Re-embed a ready document's chunks from Postgres into Qdrant (replacing its points)."""
+    if document.status != DocumentStatus.ready:
+        raise ConflictError(
+            "Only ready documents can be reindexed",
+            code="DOCUMENT_NOT_READY",
+            details={"status": document.status},
+        )
+    chunks = list(
+        db.scalars(
+            select(DocumentChunk)
+            .where(DocumentChunk.document_id == document.id)
+            .order_by(DocumentChunk.chunk_index)
+        )
+    )
+    try:
+        store.delete_document(document.id)
+        index_chunks(embedder, store, document, chunks)
+    except Exception as exc:
+        logger.warning("reindex_failed document_id=%s error=%r", document.id, exc)
+        document.vector_indexed = False
+        db.commit()
+        raise ServiceUnavailableError(
+            "The vector index is unavailable; try again later",
+            code="VECTOR_INDEX_UNAVAILABLE",
+        ) from exc
+    document.vector_indexed = True
+    db.commit()
+    logger.info("reindex document_id=%s chunks=%s", document.id, len(chunks))
+    return document
 
 
 @contextmanager
@@ -228,11 +309,16 @@ def get_session_factory() -> SessionFactory:
 
 
 def process_in_background(
-    session_factory: SessionFactory, document_id: int, data: bytes, kind: str
+    session_factory: SessionFactory,
+    document_id: int,
+    data: bytes,
+    kind: str,
+    embedder: Embedder | None = None,
+    store: VectorStore | None = None,
 ) -> None:
     with session_factory() as db:
         document = db.get(Document, document_id)
         if document is None:
             logger.warning("ingestion_skipped document_id=%s reason=deleted", document_id)
             return
-        process_document(db, document, data, kind)
+        process_document(db, document, data, kind, embedder, store)

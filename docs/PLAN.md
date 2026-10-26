@@ -65,26 +65,24 @@ intell-support/
 │   │       ├── keyword_search.py# Postgres full-text search over chunks
 │   │       └── retrieval.py     # semantic-first, keyword fallback, threshold logic
 │   ├── alembic/
-│   ├── scripts/                 # seed.py, eval_retrieval.py
+│   ├── scripts/                 # seed.py (eval_retrieval.py only if time remains)
 │   ├── tests/
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/ (api/, pages/, components/, hooks/, context/)
-│   ├── e2e/                     # Playwright specs
+│   ├── e2e/                     # Playwright smoke spec
 │   └── Dockerfile
 ├── sample_kb/                   # Acme Cloud KB documents
 │   └── malformed/               # bad files used by tests
 ├── docker/postgres/init/        # creates the test database
 ├── docs/
 │   ├── PLAN.md                  # this file
-│   ├── ARCHITECTURE.md
-│   ├── API.md
 │   ├── CODEZERO_NOTES.md        # development log of CodeZero usage
 │   └── screenshots/
 ├── docker-compose.yml
 ├── .env.example
-└── README.md
+└── README.md                    # setup, architecture overview, API reference, decisions
 ```
 
 ---
@@ -243,8 +241,9 @@ Search / suggestions response:
 **On ticket creation:** query = `title + "\n" + description`, k = 3, snapshot into
 `ticket_suggestions`. Retrieval failure must **never** fail ticket creation (log + empty snapshot).
 
-**Evaluation:** `scripts/eval_retrieval.py` runs ~12 labelled queries (query → expected document)
-and prints hit@3 and MRR for semantic and keyword modes. Used to pick the threshold; results go in the README.
+**Evaluation (stretch, only if time remains after WP10):** `scripts/eval_retrieval.py` runs ~12
+labelled queries (query → expected document) and prints hit@3 and MRR for semantic and keyword
+modes. Until then the threshold is picked by hand against the sample KB and noted in the README.
 
 ---
 
@@ -271,10 +270,10 @@ A fictional file storage & sync SaaS. Documents in `sample_kb/`:
 Pages (responsive, Tailwind):
 
 1. **Login / Register**
-2. **Ticket list** — search box, status/priority/category filters, badges, pagination.
+2. **Ticket list** — search box, status/priority/category filters, badges, simple prev/next paging.
    Users see their own tickets; agents see all.
-3. **New ticket** — validated form; debounced "These articles might help" panel while typing
-   (calls `/api/kb/search`); on submit, redirect to the ticket detail page.
+3. **New ticket** — validated form; on submit, redirect to the ticket detail page, where the
+   suggestions are shown. (No live suggestions while typing.)
 4. **Ticket detail** — header (status, priority, category, assignee), conversation thread
    (internal notes highlighted, agents only), activity timeline, agent controls (assign dropdown,
    status buttons from `allowed_transitions`, reply box with "internal note" toggle), owner controls
@@ -305,11 +304,9 @@ JWT stored in `localStorage`; API client attaches it and redirects to login on 4
   Qdrant failure → keyword fallback with `mode = keyword`; deleting a doc removes it from both stores.
 - One `@pytest.mark.slow` test with the real fastembed model over `sample_kb/`.
 
-**Playwright** (`frontend/e2e/`):
-
-1. User registers/logs in, creates a ticket, sees suggestions with sources.
-2. Agent assigns, replies, resolves; user closes.
-3. User cannot open another user's ticket (not-found page).
+**Playwright** (`frontend/e2e/`): one smoke spec against the seeded stack — user logs in, creates
+a ticket and sees suggestions with sources; agent assigns, replies and resolves; user closes.
+Permission cases stay covered by pytest.
 
 ---
 
@@ -317,27 +314,32 @@ JWT stored in `localStorage`; API client attaches it and redirects to login on 4
 
 Each WP is one CodeZero planned session → reviewed plan → tasks → tests green → commit.
 
+**Replan (2026-10-26, during WP6):** the original WP7–WP12 were merged into WP7–WP10 to finish
+sooner. Simplified: the retrieval eval script became a stretch goal, the new-ticket form no
+longer shows live suggestions (they appear on the ticket page after creation), Playwright went
+from three specs to one smoke spec, and ARCHITECTURE.md / API.md were folded into the README.
+No requirement from the assignment brief was dropped.
+
 | WP | Scope | Done when |
 |---|---|---|
-| WP0 | Repo skeleton, compose (postgres, qdrant), PLAN.md, CodeZero log | pushed, indexed in CodeZero |
-| WP1 | Backend foundation: FastAPI app, config, db session, logging + request id, error envelope, `/api/health`, Alembic setup, pytest setup, Dockerfile, `backend` compose service | `docker compose up` serves `/api/health`; pytest runs in container |
-| WP2 | Users + auth: model, migration, register/login/me, JWT deps, `require_agent` | auth tests green |
-| WP3 | Tickets core: tickets/comments/events models + migration, create/list/detail/patch, comments, events, filters + search, permissions | ticket + permission tests green |
-| WP4 | Workflow + assignment: state machine, status endpoint, assign endpoint, auto-transition on owner comment, `allowed_transitions` | workflow tests green |
-| WP5 | KB ingestion: documents/chunks models + migration, upload validation, extraction, chunking, background processing, list/detail/delete, sample KB docs + malformed fixtures | ingestion tests green |
+| WP0 | Repo skeleton, compose (postgres, qdrant), PLAN.md, CodeZero log | ✅ done |
+| WP1 | Backend foundation: FastAPI app, config, db session, logging + request id, error envelope, `/api/health`, Alembic setup, pytest setup, Dockerfile, `backend` compose service | ✅ done |
+| WP2 | Users + auth: model, migration, register/login/me, JWT deps, `require_agent` | ✅ done |
+| WP3 | Tickets core: tickets/comments/events models + migration, create/list/detail/patch, comments, events, filters + search, permissions | ✅ done |
+| WP4 | Workflow + assignment: state machine, status endpoint, assign endpoint, auto-transition on owner comment, `allowed_transitions` | ✅ done |
+| WP5 | KB ingestion: documents/chunks models + migration, upload validation, extraction, chunking, background processing, list/detail/delete, sample KB docs + malformed fixtures | ✅ done |
 | WP6 | Retrieval: embedder, Qdrant store, keyword search, retrieval service with fallback + threshold, `/api/kb/search`, suggestions on ticket create, refresh, reindex | retrieval tests green |
-| WP7 | Seed script (agents, users, KB docs, tickets), agent dashboard endpoint, `/api/users/agents`, retrieval eval script | eval prints metrics; seeded demo works |
-| WP8 | Frontend foundation: Vite + React (JS) + Tailwind + Router + TanStack Query, API client, auth context, layout/nav, login/register, Dockerfile, `frontend` compose service | login works against backend |
-| WP9 | Ticket pages: list (filters/search), create (live suggestions), detail (thread, timeline, controls, suggestions panel) | full ticket flow works in browser |
-| WP10 | Agent dashboard + KB page (upload, table, search panel) | flows work in browser |
-| WP11 | Playwright e2e (3 specs) | e2e green |
-| WP12 | Docs: README, ARCHITECTURE.md, API.md, final CodeZero note |
+| WP7 | Backend wrap-up: seed script (2 agents, 2 users, sample KB ingested, ~8 tickets across all statuses with comments and internal notes; emails on a normal domain such as `@acme-demo.com`, because `.test`/`.local` are rejected), `GET /api/dashboard/agent`, `GET /api/users/agents` | seeded demo works; tests green |
+| WP8 | Frontend core: Vite + React (JS) + Tailwind + Router + TanStack Query, API client, auth context, layout/nav, login/register, ticket list (search + filters), new ticket form, ticket detail (thread, timeline, agent/owner controls, suggestions panel with "Insert into reply"), Dockerfile, `frontend` compose service | full ticket flow works in the browser against the seeded backend |
+| WP9 | Agent dashboard page, KB page (upload, document table, search panel), one Playwright smoke spec (§12) | dashboard and KB flows work in browser; smoke spec green |
+| WP10 | Delivery: README (setup, running locally, running tests, architecture overview, API reference table + link to `/docs`, key decisions, retrieval threshold notes), final summary in `CODEZERO_NOTES.md`. Screenshots are taken by hand, not by CodeZero; the README links to whatever is in `docs/screenshots/` | a fresh clone runs from the README alone |
 
 ### Definition of done for every work package
 
 - Copy the approved plan from `~/.code0/plans/<plan-file>.md` into `docs/codezero/plans/`.
 - Append an entry for the WP to `docs/CODEZERO_NOTES.md` using the template in that file.
-- Run `docker compose run --rm backend pytest -q` and only commit if it passes.
+- Run `docker compose run --rm backend pytest -q` and only commit if it passes. Frontend WPs
+  must also pass `npm run build`.
 - Commit messages: `WPn: <short summary>`. Never add `Co-Authored-By`, "Generated with",
   or any AI attribution lines to commits or PRs.
 - Include the `.code0/` folder in the commit.

@@ -10,6 +10,8 @@ TICKET_ENDPOINTS = [
     ("POST", "/api/tickets/{id}/comments", {"body": "Hello from someone else"}),
     ("GET", "/api/tickets/{id}/events", None),
     ("POST", "/api/tickets/{id}/status", {"status": "resolved"}),
+    ("GET", "/api/tickets/{id}/suggestions", None),
+    ("POST", "/api/tickets/{id}/suggestions/refresh", None),
 ]
 
 ALL_ENDPOINTS = [

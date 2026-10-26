@@ -16,6 +16,8 @@ email-validator==2.2.0
 # Knowledge base ingestion (python-multipart: FastAPI UploadFile / Form)
 pypdf==5.1.0
 python-multipart==0.0.20
+# Embeddings (ONNX, CPU); the model is downloaded at image build time
+fastembed==0.4.2
 
 # Tests (run inside the same image)
 pytest==8.3.4

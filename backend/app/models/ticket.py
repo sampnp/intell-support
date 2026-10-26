@@ -74,6 +74,9 @@ class Ticket(Base):
         CheckConstraint(in_values("status", TicketStatus), name="status_valid"),
         CheckConstraint(in_values("category", TicketCategory), name="category_valid"),
         CheckConstraint(in_values("priority", TicketPriority), name="priority_valid"),
+        CheckConstraint(
+            "suggestions_mode IN ('semantic', 'keyword')", name="suggestions_mode_valid"
+        ),
         Index("ix_tickets_search_vector", "search_vector", postgresql_using="gin"),
     )
 
@@ -98,6 +101,10 @@ class Ticket(Base):
     search_vector: Mapped[str] = mapped_column(
         TSVECTOR, Computed(SEARCH_VECTOR_SQL, persisted=True), deferred=True
     )
+    # Suggestions snapshot metadata (rows live in ticket_suggestions). Kept on the ticket so an
+    # empty snapshot still records which retrieval mode ran and when.
+    suggestions_mode: Mapped[str | None] = mapped_column(String(20))
+    suggestions_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     creator: Mapped[User] = relationship(foreign_keys=[created_by])
     assignee: Mapped[User | None] = relationship(foreign_keys=[assigned_to])
